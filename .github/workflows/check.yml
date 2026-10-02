@@ -1,0 +1,52 @@
+name: check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"   # запасной вариант, основной запуск — cron-job.org
+
+concurrency:
+  group: check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests beautifulsoup4
+
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+
+      - name: Run bot
+        run: python bot.py
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          SITE_LOGIN: ${{ secrets.SITE_LOGIN }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          ORDERS_URL: ${{ secrets.ORDERS_URL }}
+          MESSAGES_URL: ${{ secrets.MESSAGES_URL }}
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
